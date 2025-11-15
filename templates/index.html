@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI-Based Language Translator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    body.light-mode {
+      background-color: #f0f0f0;
+      color: #222;
+    }
+    body.dark-mode {
+      background-color: #222;
+      color: #eee;
+    }
+    .chat-container {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    .chat-history {
+      width: 30%;
+      height: 80vh;
+      overflow-y: scroll;
+      padding: 10px;
+      background-color: #f4f4f4;
+      border-radius: 10px;
+      margin-right: 20px;
+    }
+    body.dark-mode .chat-history {
+      background-color: #333;
+    }
+    .chat-history h3 {
+      text-align: center;
+    }
+    .chat-bubble {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 15px;
+      background-color: #e0e0e0;
+      word-wrap: break-word;
+    }
+    body.dark-mode .chat-bubble {
+      background-color: #555;
+    }
+    .user-bubble {
+      background-color: #d1f7d1;
+    }
+    body.dark-mode .user-bubble {
+      background-color: #3a5f3a;
+    }
+    .bot-bubble {
+      background-color: #b3d9ff;
+    }
+    body.dark-mode .bot-bubble {
+      background-color: #3a5f8a;
+    }
+    .translation-form {
+      width: 65%;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    body.dark-mode .translation-form {
+      background-color: #444;
+      box-shadow: 0 0 10px rgba(255,255,255,0.1);
+    }
+    textarea, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    body.dark-mode textarea, body.dark-mode select {
+      background-color: #666;
+      color: white;
+      border: 1px solid #888;
+    }
+    .delete-btn {
+      margin-top: 10px;
+      background-color: red;
+      color: white;
+      border: none;
+      padding: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .highlight {
+      border: 2px solid orange;
+      box-shadow: 0 0 10px orange;
+    }
+    #char-count {
+      float: right;
+      font-size: 0.9em;
+      color: #666;
+      margin-top: -30px;
+      margin-bottom: 10px;
+    }
+    body.dark-mode #char-count {
+      color: #ccc;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .btn-row button {
+      width: auto;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="light-mode">
+  <h1 style="text-align: center;">AI-Based Language Translator</h1>
+
+  <button id="darkModeToggle" style="margin-left: 20px;">Switch to Dark Mode</button>
+
+  <div class="chat-container">
+    <!-- Left side: Chat history -->
+    <div class="chat-history" id="history-container">
+      <h3>Translation History
+        <form method="POST" action="{{ url_for('clear_history') }}" style="display:inline;">
+          <button type="submit" style="background-color:#333;color:#fff;border:none;padding:5px 10px; border-radius:5px; cursor:pointer;float:right;">Clear All</button>
+        </form>
+      </h3>
+      {% for transaction in history %}
+        <div class="chat-bubble user-bubble {% if loop.last %}highlight{% endif %}">
+          <strong>Original Text ({{ transaction.timestamp }}):</strong><br>
+          {{ transaction.original_text|e }}
+          <form method="POST" action="{{ url_for('delete_entry', entry_id=transaction.id) }}">
+            <button type="submit" class="delete-btn">Delete</button>
+          </form>
+        </div>
+        <div class="chat-bubble bot-bubble {% if loop.last %}highlight{% endif %}">
+          <strong>Translated Text:</strong><br>
+          {{ transaction.translated_text|e }}
+        </div>
+      {% else %}
+        <p>No translation history yet.</p>
+      {% endfor %}
+    </div>
+
+    <!-- Right side: Translation form -->
+    <div class="translation-form">
+      <form method="post" id="translateForm">
+        <label>Enter Text:</label>
+        <textarea id="text-input" name="text" rows="5" placeholder="Type something..." required></textarea>
+        <div id="char-count">0 characters</div>
+
+        <div class="btn-row">
+          <button type="button" id="speech-input-btn">🎤 Speak</button>
+          <button type="button" id="copy-btn">📋 Copy Translated Text</button>
+          <button type="button" id="download-btn">⬇️ Download Translation</button>
+          <button type="button" id="swap-btn" title="Swap Source & Target">🔄 Swap Languages</button>
+        </div>
+
+        <label>Select Source Language:</label>
+        <select name="source_language" id="source-language-select" required>
+          <option value="auto" {% if source_lang == 'auto' %}selected{% endif %}>Auto Detect</option>
+          <option value="en" {% if source_lang == 'en' %}selected{% endif %}>English</option>
+          <option value="hi" {% if source_lang == 'hi' %}selected{% endif %}>Hindi</option>
+          <option value="fr" {% if source_lang == 'fr' %}selected{% endif %}>French</option>
+          <option value="es" {% if source_lang == 'es' %}selected{% endif %}>Spanish</option>
+          <option value="ta" {% if source_lang == 'ta' %}selected{% endif %}>Tamil</option>
+          <option value="te" {% if source_lang == 'te' %}selected{% endif %}>Telugu</option>
+          <option value="my" {% if source_lang == 'my' %}selected{% endif %}>Malayalam</option>
+          <option value="de" {% if source_lang == 'de' %}selected{% endif %}>German</option>
+          <option value="it" {% if source_lang == 'it' %}selected{% endif %}>Italian</option>
+          <option value="ja" {% if source_lang == 'ja' %}selected{% endif %}>Japanese</option>
+          <option value="ko" {% if source_lang == 'ko' %}selected{% endif %}>Korean</option>
+          <option value="zh-cn" {% if source_lang == 'zh-cn' %}selected{% endif %}>Chinese (Simplified)</option>
+          <option value="zh-tw" {% if source_lang == 'zh-tw' %}selected{% endif %}>Chinese (Traditional)</option>
+          <option value="ar" {% if source_lang == 'ar' %}selected{% endif %}>Arabic</option>
+          <option value="ru" {% if source_lang == 'ru' %}selected{% endif %}>Russian</option>
+          <option value="pt" {% if source_lang == 'pt' %}selected{% endif %}>Portuguese</option>
+          <option value="bn" {% if source_lang == 'bn' %}selected{% endif %}>Bengali</option>
+          <option value="mr" {% if source_lang == 'mr' %}selected{% endif %}>Marathi</option>
+          <option value="pl" {% if source_lang == 'pl' %}selected{% endif %}>Polish</option>
+          <option value="nl" {% if source_lang == 'nl' %}selected{% endif %}>Dutch</option>
+          <option value="sv" {% if source_lang == 'sv' %}selected{% endif %}>Swedish</option>
+        </select>
+
+        <label>Select Target Language:</label>
+        <select name="target_language" id="target-language-select" required>
+          <option value="en" {% if detected_lang == 'en' %}selected{% endif %}>English</option>
+          <option value="hi" {% if detected_lang == 'hi' %}selected{% endif %}>Hindi</option>
+          <option value="fr" {% if detected_lang == 'fr' %}selected{% endif %}>French</option>
+          <option value="es" {% if detected_lang == 'es' %}selected{% endif %}>Spanish</option>
+          <option value="ta" {% if detected_lang == 'ta' %}selected{% endif %}>Tamil</option>
+          <option value="te" {% if detected_lang == 'te' %}selected{% endif %}>Telugu</option>
+          <option value="my" {% if detected_lang == 'my' %}selected{% endif %}>Malayalam</option>
+          <option value="de" {% if detected_lang == 'de' %}selected{% endif %}>German</option>
+          <option value="it" {% if detected_lang == 'it' %}selected{% endif %}>Italian</option>
+          <option value="ja" {% if detected_lang == 'ja' %}selected{% endif %}>Japanese</option>
+          <option value="ko" {% if detected_lang == 'ko' %}selected{% endif %}>Korean</option>
+          <option value="zh-cn" {% if detected_lang == 'zh-cn' %}selected{% endif %}>Chinese (Simplified)</option>
+          <option value="zh-tw" {% if detected_lang == 'zh-tw' %}selected{% endif %}>Chinese (Traditional)</option>
+          <option value="ar" {% if detected_lang == 'ar' %}selected{% endif %}>Arabic</option>
+          <option value="ru" {% if detected_lang == 'ru' %}selected{% endif %}>Russian</option>
+          <option value="pt" {% if detected_lang == 'pt' %}selected{% endif %}>Portuguese</option>
+          <option value="bn" {% if detected_lang == 'bn' %}selected{% endif %}>Bengali</option>
+          <option value="mr" {% if detected_lang == 'mr' %}selected{% endif %}>Marathi</option>
+          <option value="pl" {% if detected_lang == 'pl' %}selected{% endif %}>Polish</option>
+          <option value="nl" {% if detected_lang == 'nl' %}selected{% endif %}>Dutch</option>
+          <option value="sv" {% if detected_lang == 'sv' %}selected{% endif %}>Swedish</option>
+        </select>
+
+        <button type="submit" style="margin-top: 15px;">Translate</button>
+      </form>
+
+      {% if translated_text %}
+      <h3>Translated Text:</h3>
+      <p id="translated-text">{{ translated_text }}</p>
+      <button id="speak-btn">🔊 Listen</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Dark/Light mode toggle
+    const darkModeToggle = document.getElementById("darkModeToggle");
+    darkModeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark-mode");
+      document.body.classList.toggle("light-mode");
+      if(document.body.classList.contains("dark-mode")){
+        darkModeToggle.textContent = "Switch to Light Mode";
+      } else {
+        darkModeToggle.textContent = "Switch to Dark Mode";
+      }
+    });
+
+    // Character counter for textarea
+    const textInput = document.getElementById("text-input");
+    const charCount = document.getElementById("char-count");
+    textInput.addEventListener("input", () => {
+      charCount.textContent = `${textInput.value.length} characters`;
+    });
+    charCount.textContent = `${textInput.value.length} characters`;
+
+    // Swap source and target language selects
+    const swapBtn = document.getElementById("swap-btn");
+    swapBtn.addEventListener("click", () => {
+      const sourceSelect = document.getElementById("source-language-select");
+      const targetSelect = document.getElementById("target-language-select");
+
+      let temp = sourceSelect.value;
+      sourceSelect.value = targetSelect.value;
+      targetSelect.value = temp;
+    });
+
+    // Copy translated text to clipboard
+    const copyBtn = document.getElementById("copy-btn");
+    const translatedTextElem = document.getElementById("translated-text");
+    copyBtn.addEventListener("click", () => {
+      if(translatedTextElem && translatedTextElem.textContent.trim() !== ""){
+        navigator.clipboard.writeText(translatedTextElem.textContent.trim())
+          .then(() => alert("Translated text copied to clipboard!"))
+          .catch(() => alert("Failed to copy text."));
+      } else {
+        alert("No translated text to copy.");
+      }
+    });
+
+    // Download translated text as a text file
+    const downloadBtn = document.getElementById("download-btn");
+    downloadBtn.addEventListener("click", () => {
+      if(translatedTextElem && translatedTextElem.textContent.trim() !== ""){
+        const blob = new Blob([translatedTextElem.textContent.trim()], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "translated_text.txt";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 0);
+      } else {
+        alert("No translated text to download.");
+      }
+    });
+
+    // Speech-to-text input (microphone)
+    const speechInputBtn = document.getElementById("speech-input-btn");
+    let recognition;
+    if ("webkitSpeechRecognition" in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US'; // Default language for speech input
+      recognition.onresult = function(event) {
+        textInput.value = event.results[0][0].transcript;
+        charCount.textContent = `${textInput.value.length} characters`;
+      };
+      recognition.onerror = function(event) {
+        alert("Speech recognition error: " + event.error);
+      };
+    } else {
+      speechInputBtn.disabled = true;
+      speechInputBtn.textContent = "🎤 Not supported";
+    }
+
+    speechInputBtn.addEventListener("click", () => {
+      if(recognition){
+        recognition.lang = document.getElementById("source-language-select").value === "auto" ? "en-US" : document.getElementById("source-language-select").value;
+        recognition.start();
+      }
+    });
+
+    // Text-to-speech for translated text
+    const speakBtn = document.getElementById("speak-btn");
+    if(speakBtn){
+      speakBtn.addEventListener("click", () => {
+        const text = translatedTextElem.textContent.trim();
+        if(!text) return alert("No translated text to speak.");
+
+        const utterance = new SpeechSynthesisUtterance(text);
+
+        // Try to set voice matching the target language if possible
+        const targetLang = document.getElementById("target-language-select").value;
+        const voices = window.speechSynthesis.getVoices();
+        const matchedVoice = voices.find(v => v.lang.toLowerCase().startsWith(targetLang.toLowerCase()));
+        if(matchedVoice) utterance.voice = matchedVoice;
+
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+  </script>
+</body>
+</html>

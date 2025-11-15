@@ -1,0 +1,93 @@
+/* Chat container */
+.chat-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+/* Left side for transaction history */
+.chat-history {
+    width: 30%;
+    height: 80vh;
+    overflow-y: scroll;
+    padding: 10px;
+    background-color: #f4f4f4;
+    border-radius: 10px;
+    margin-right: 20px;
+}
+
+.history-title {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Card style */
+.history-card {
+    background-color: #fff;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.history-card .timestamp {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+
+.history-card .original-text {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.history-card .translated-text {
+    background-color: #f7f7f7;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Right side for translation form */
+.translation-form {
+    width: 65%;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.translation-form form {
+    margin-bottom: 20px;
+}
+
+.translation-form button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.translation-form button:hover {
+    background-color: #45a049;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    resize: none;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
